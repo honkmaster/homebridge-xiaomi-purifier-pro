@@ -638,9 +638,9 @@ MiAirPurifier.prototype = {
 			return;
 		}
 
-		const state = await this.device.buzzer();
+		const state = await this.device.call("get_prop", ["volume"]);
 
-		logger.debug('getBuzzer: %s', state);
+		logger.debug('getBuzzer: %s', state[0]);
 
 		callback(null, state);
 	},
@@ -652,12 +652,14 @@ MiAirPurifier.prototype = {
 		}
 
 		logger.debug('setBuzzer: %s', state);
-
-		await this.device.buzzer(state)
+		
+		await this.device.call("set_volume", [state ? 100 : 0])
 			.then(state => {
+			
 				callback(null);
 			})
 			.catch(error => {
+				logger.debug('setBuzzer:' + error);
 				callback(error);
 			});
 	},
