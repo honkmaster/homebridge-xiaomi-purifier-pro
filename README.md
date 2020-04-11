@@ -1,9 +1,8 @@
-[![npm version](https://badge.fury.io/js/homebridge-xiaomi-purifier.svg)](https://badge.fury.io/js/homebridge-xiaomi-purifier)
+[![npm version](https://badge.fury.io/js/homebridge-xiaomi-purifier-pro.svg)](https://badge.fury.io/js/homebridge-xiaomi-purifier-pro)
 
-# homebridge-xiaomi-purifier
-This project is forked from [homebridge-mi-air-purifier](https://github.com/seikan/homebridge-mi-air-purifier.git).
-
-This is Xiaomi Mi Air Purifier plugin for [Homebridge](https://github.com/nfarina/homebridge). This plugin will add the air purifier and **Air Quality Sensor** to your Home app. This version is working with iOS 11 to add the device as air purifier in Home app.
+# homebridge-xiaomi-purifier-pro
+ 
+ 
 
 ![mi-air-purifier](https://cloud.githubusercontent.com/assets/73107/26249685/1d0ae78c-3cda-11e7-8b64-71e8d4323a3e.jpg)
 
@@ -36,7 +35,7 @@ This is Xiaomi Mi Air Purifier plugin for [Homebridge](https://github.com/nfarin
 1. Install required packages.
 
 	```
-	npm install -g homebridge-xiaomi-purifier miio
+	npm install -g homebridge-xiaomi-purifier-pro miio
 	```
 
 2. Make sure your Homebridge server is same network with your air purifier, then run following command to discover the token.
@@ -70,10 +69,10 @@ This is Xiaomi Mi Air Purifier plugin for [Homebridge](https://github.com/nfarin
 	```
 		"accessories": [
 			{
-				"accessory": "MiAirPurifier",
+				"accessory": "MiAirPurifierPro",
 				"name": "Bed Room Air Purifier",
 				"ip": "ADDRESS_OF_THE_AIR_PURIFIER",
-				"token": "TOKEN_FROM_STEP_3",
+				"token": "TOKEN_FROM_STEP_3",				
 				"showTemperature": true,
 				"showHumidity": true,
 				"showAirQuality": true,
@@ -81,10 +80,10 @@ This is Xiaomi Mi Air Purifier plugin for [Homebridge](https://github.com/nfarin
 				"enableBuzzer": true
 			},
 			{
-				"accessory": "MiAirPurifier",
+				"accessory": "MiAirPurifierPro",
 				"name": "Living Room Air Purifier",
 				"ip": "ADDRESS_OF_THE_AIR_PURIFIER",
-				"token": "TOKEN_FROM_STEP_3",
+				"token": "TOKEN_FROM_STEP_3",				
 				"showTemperature": true,
 				"showHumidity": true,
 				"showAirQuality": true,
