@@ -8,9 +8,10 @@
 
 	"accessories": [
 		{
-			"accessory": "MiAirPurifier",
+			"accessory": "MiAirPurifier3",
 			"name": "Air Purifier",
 			"ip": "192.168.1.8",
+			"did": "424234334",
 			"token": "6f7a65786550386c700a6b526666744d",
 			"showTemperature": true,
 			"showHumidity": true,

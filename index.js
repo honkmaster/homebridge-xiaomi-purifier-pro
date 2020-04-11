@@ -10,16 +10,17 @@ module.exports = function (homebridge) {
 	Service = homebridge.hap.Service;
 	Characteristic = homebridge.hap.Characteristic;
 
-	homebridge.registerAccessory('homebridge-xiaomi-purifier', 'MiAirPurifier', MiAirPurifier);
+	homebridge.registerAccessory('homebridge-xiaomi-purifier-3', 'MiAirPurifier3', MiAirPurifier3);
 }
 
-function MiAirPurifier(log, config) {
+function MiAirPurifier3(log, config) {
 	logger = log;
 
 	this.services = [];
 	this.name = config.name || 'Air Purifier';
 	this.ip = config.ip;
 	this.token = config.token;
+	this.did = config.did;
 	this.showAirQuality = config.showAirQuality || false;
 	this.showTemperature = config.showTemperature || false;
 	this.showHumidity = config.showHumidity || false;
@@ -30,7 +31,7 @@ function MiAirPurifier(log, config) {
 	this.temperature = undefined;
 	this.humidity = undefined;
 	this.aqi = undefined;
-
+	
 	//Korea PM 2.5 standard value
 	this.levels = [
 		[76, Characteristic.AirQuality.POOR],
@@ -88,7 +89,7 @@ function MiAirPurifier(log, config) {
 
 	this.serviceInfo
 		.setCharacteristic(Characteristic.Manufacturer, 'Xiaomi')
-		.setCharacteristic(Characteristic.Model, 'Air Purifier')
+		.setCharacteristic(Characteristic.Model, 'Air Purifier 3')
 		.setCharacteristic(Characteristic.SerialNumber, this.token.toUpperCase())
 		.setCharacteristic(Characteristic.FirmwareRevision, version);
 
@@ -154,7 +155,7 @@ function MiAirPurifier(log, config) {
 	this.discover();
 }
 
-MiAirPurifier.prototype = {
+MiAirPurifier3.prototype = {
 	discover: function () {
 		const that = this;
 
@@ -175,33 +176,32 @@ MiAirPurifier.prototype = {
 
 					logger.debug('Discovered Mi Air Purifier (%s) at %s', device.miioModel, that.ip);
 					logger.debug('Model       : ' + device.miioModel);
-					logger.debug('Power       : ' + device.property('power'));
-					logger.debug('Mode        : ' + device.property('mode'));
-					logger.debug('Temperature : ' + device.property('temperature'));
-					logger.debug('Humidity    : ' + device.property('humidity'));
-					logger.debug('Air Quality : ' + device.property('aqi'));
-					logger.debug('LED         : ' + device.property('led'));
+					logger.debug('Power       : ' + device.property('power')['value']);
+					logger.debug('Mode        : ' + device.property('mode')['value']);
+					logger.debug('Temperature : ' + device.property('temperature')['value']);
+					logger.debug('Humidity    : ' + device.property('humidity')['value']);
+					logger.debug('Air Quality : ' + device.property('aqi')['value']);
+					logger.debug('LED         : ' + device.property('led_brightness')['value']);
 
-					// Listen to mode change event
-					device.on('modeChanged', mode => {
-						logger.debug('mode changed to ' + mode);
 
-						// that.updateActiveState(mode);
-						that.updateTargetAirPurifierState(mode);
-						// that.updateCurrentAirPurifierState(mode);
-					});
+					// 	'power'        : [ 2,  2], // 
+					// 	'fan_level'    : [ 2,  4], // Fan Level : 1(Level 1), 2(Level 2), 3(Level 3)
+					// 	'mode'         : [ 2,  5], // Mode : 0(Auto), 1(Sleep), 2(Favorite), 3(None)
+					// 	'pm25'         : [ 3,  6], // PM2.5 Density : 0-600 1
+					// 	'humidity'     : [ 3,  7], // Relative Humidity: 0-100(Percentage)
+					// 	'temp'         : [ 3,  8], // Temperature: -40-125 0.1
+					// 	'filter_level' : [ 4,  3], // Filter Live Level : 0-100(Percentage)
+					// 	'lock'         : [ 7,  1], // Physical Control Locked : bool
+					// 	'speed_write'  : [10,  8], // motor1-speed : 0-3000 : 0-3000 1
+					// 	'speed_read'   : [10,  9], // motor1-speed : 0-3000 : 0-3000 1
+					// 	'aqi_heartbeat': [13,  9]  // aqi-updata-heartbeat: 0 - 65534
 
-					// Listen to power change event
-					device.on('powerChanged', power => {
-						logger.debug('power changed to ' + (power ? 'on' : 'off'));
-
-						that.updateActiveState(that.mode);
-						that.updateCurrentAirPurifierState(that.mode);
-					});
 
 					// Listen to air quality change event
 					if (that.showAirQuality) {
 						device.on('pm2.5Changed', value => {
+							logger.debug('pm2.5 changed to ' + value);
+
 							that.updateAirQuality(value);
 						});
 					}
@@ -217,6 +217,7 @@ MiAirPurifier.prototype = {
 								logger.debug(error);
 							});
 						device.on('temperatureChanged', temperature => {
+							logger.debug('temperature changed to ' + temperature.celsius);
 							that.updateTemperature(temperature.celsius);
 						});
 					}
@@ -232,6 +233,7 @@ MiAirPurifier.prototype = {
 								logger.debug(error);
 							});
 						device.on('relativeHumidityChanged', value => {
+							logger.debug('relative humidity changed to ' + value);
 							that.updateHumidity(value);
 						});
 					}
@@ -249,22 +251,23 @@ MiAirPurifier.prototype = {
 			});
 	},
 
-
-
-
-
-
-
 	getActiveState: function (callback) {
 		if (!this.device) {
 			callback(new Error('No Air Purifier is discovered.'));
 			return;
 		}
 
-		this.device.power()
-			.then(isOn => {
-				logger.debug('getActiveState: State -> %s', isOn);
-				callback(null, isOn);
+		this.device.call("get_properties", [{ "did": this.did, "siid": 2, "piid": 2 }])
+			.then(result => {
+				const isOn = result[0]['value'];
+				logger.debug('getActiveState: %s', isOn ? 'ON' : 'OFF');
+
+				if (isOn) {
+					callback(null, Characteristic.Active.ACTIVE);
+				} else {
+					callback(null, Characteristic.Active.INACTIVE);
+				}
+
 			})
 			.catch(error => {
 				callback(error);
@@ -277,49 +280,27 @@ MiAirPurifier.prototype = {
 			return;
 		}
 
-		const that = this;
+		logger.debug('setActiveState: %s', state == Characteristic.Active.ACTIVE ? 'ON' : 'OFF');
 
-		logger.debug('setActiveState: %s', state);
+		this.device.changePower(state)
+			.then(isOn => {
 
-		this.device.setPower(state)
-			.then(isOn => {				
-				// do nothing, powerChanged will handle it.
-				let activeState = state ? Characteristic.Active.ACTIVE : Characteristic.Active.INACTIVE;
-				this.service.getCharacteristic(Characteristic.Active).updateValue(activeState);
+				if (state == Characteristic.Active.ACTIVE) {
+					this.service.getCharacteristic(Characteristic.CurrentAirPurifierState).updateValue(Characteristic.CurrentAirPurifierState.PURIFYING_AIR);
+					this.service.getCharacteristic(Characteristic.Active).updateValue(Characteristic.Active.ACTIVE);
+					this.service.getCharacteristic(Characteristic.TargetAirPurifierState).updateValue(Characteristic.TargetAirPurifierState.AUTO);
+
+				}
+				else {
+					this.service.getCharacteristic(Characteristic.CurrentAirPurifierState).updateValue(Characteristic.CurrentAirPurifierState.INACTIVE);
+					this.service.getCharacteristic(Characteristic.Active).updateValue(Characteristic.Active.INACTIVE);
+				}
+
 				callback(null);
 			})
 			.catch(error => {
 				callback(error);
 			});
-	},
-
-	updateActiveState: async function (mode) {
-		this.mode = mode;
-
-		const isOn = await this.device.power();
-		let state = isOn ? Characteristic.Active.ACTIVE : Characteristic.Active.INACTIVE;
-
-		if (isOn) {
-			logger.debug('updateActiveState: Mode ->  %s', this.mode);
-			state = (this.mode != 'idle') ? Characteristic.Active.ACTIVE : Characteristic.Active.INACTIVE;
-		}
-
-		logger.debug('updateActiveState: State -> %s', state);
-
-		this.service.getCharacteristic(Characteristic.Active).updateValue(state);
-
-
-		// let state = isOn[0] == 'on' ? Characteristic.Active.ACTIVE : Characteristic.Active.INACTIVE;
-
-		// logger.debug('updateActiveState: Current State -> ' + state + ' ; Current IsOn -> ' + isOn[0]);
-		// if (isOn[0] == 'on') {
-		// 	logger.debug('updateActiveState: Mode ->  %s', mode);
-		// 	state = (mode != 'idle') ? Characteristic.Active.ACTIVE : Characteristic.Active.INACTIVE;
-		// }
-
-		// logger.debug('updateActiveState: Current State -> ' + state);
-		// Characteristic.Active.INACTIVE = 0
-		// Characteristic.Active.ACTIVE = 1
 	},
 
 	getCurrentAirPurifierState: function (callback) {
@@ -328,30 +309,28 @@ MiAirPurifier.prototype = {
 			return;
 		}
 
-		this.device.power()
-			.then(isOn => {
-				logger.debug('getCurrentAirPurifierState: State -> %s', (isOn ? Characteristic.CurrentAirPurifierState.PURIFYING_AIR : Characteristic.CurrentAirPurifierState.INACTIVE));
-				callback(null, isOn ? Characteristic.CurrentAirPurifierState.PURIFYING_AIR : Characteristic.CurrentAirPurifierState.INACTIVE);
+		this.device.call("get_properties", [{ "did": this.did, "siid": 2, "piid": 2 }])
+			.then(result => {
+				// HomeKit
+				// INACTIVE = 0
+				// IDLE = 1
+				// PURIFYING_AIR = 2
+
+				// Miio
+				// On = true
+				// Off = false
+				const isOn = result[0]['value'];
+				logger.debug('getCurrentAirPurifierState: %s', isOn ? 'PURIFYING_AIR' : 'INACTIVE');
+
+				if (isOn) {
+					callback(null, Characteristic.CurrentAirPurifierState.PURIFYING_AIR);
+				} else {
+					callback(null, Characteristic.CurrentAirPurifierState.INACTIVE);
+				}
 			})
 			.catch(error => {
 				callback(error);
 			});
-	},
-
-	updateCurrentAirPurifierState: async function (mode) {
-		this.mode = mode;
-
-		const isOn = await this.device.power();
-		let state = isOn ? Characteristic.CurrentAirPurifierState.PURIFYING_AIR : Characteristic.CurrentAirPurifierState.INACTIVE;
-
-		if (isOn) {
-			logger.debug('updateCurrentAirPurifierState: Mode ->  %s', this.mode);
-			state = (this.mode == 'idle') ? Characteristic.CurrentAirPurifierState.INACTIVE : Characteristic.CurrentAirPurifierState.PURIFYING_AIR;
-		}
-
-		logger.debug('getCurrentAirPurifierState: State -> %s', state);
-
-		this.service.getCharacteristic(Characteristic.CurrentAirPurifierState).updateValue(state);
 	},
 
 	getTargetAirPurifierState: function (callback) {
@@ -360,12 +339,28 @@ MiAirPurifier.prototype = {
 			return;
 		}
 
-		const state = (this.mode != 'favorite') ? Characteristic.TargetAirPurifierState.AUTO : Characteristic.TargetAirPurifierState.MANUAL;
+		this.device.call("get_properties", [{ "did": this.did, "siid": 2, "piid": 5 }])
+			.then(result => {
+				// HomeKit
+				// AUTO = 1
+				// MANUAL = 0
 
-		logger.debug('getTargetAirPurifierState: Mode -> %s', this.mode);
-		logger.debug('getTargetAirPurifierState: State -> %s', state);
+				// Miio 
+				// auto = 0
+				// favorite = 2
+				const mode = result[0]['value'];
 
-		callback(null, state);
+				logger.debug('getTargetAirPurifierState: ' + (mode == 0 ? 'AUTO' : 'MANUAL'));
+
+				if (mode == 0) {
+					callback(null, Characteristic.TargetAirPurifierState.AUTO);
+				} else {
+					callback(null, Characteristic.TargetAirPurifierState.MANUAL);
+				}
+			})
+			.catch(error => {
+				callback(error);
+			});
 	},
 
 	setTargetAirPurifierState: function (state, callback) {
@@ -374,45 +369,102 @@ MiAirPurifier.prototype = {
 			return;
 		}
 
-		const mode = (state) ? 'auto' : 'favorite';
-		this.mode = mode;
+		logger.debug('setTargetAirPurifierState: %s', state == Characteristic.TargetAirPurifierState.AUTO ? 'AUTO' : 'MANUAL');
 
-		logger.debug('setTargetAirPurifierState: %s', mode);
+		const mode = (state == Characteristic.TargetAirPurifierState.AUTO) ? 'auto' : 'favorite';
 
-		this.device.setMode(mode)
-			.then(mode => {
-				callback(null);
+		this.device.changeMode(mode)
+			.then(result => {
+				// HomeKit
+				// AUTO = 1
+				// MANUAL = 0
+
+				// Miio
+				// auto = 0
+				// favorite = 2
+
+				this.service.getCharacteristic(Characteristic.CurrentAirPurifierState).updateValue(Characteristic.CurrentAirPurifierState.PURIFYING_AIR);
+				this.service.getCharacteristic(Characteristic.Active).updateValue(Characteristic.Active.ACTIVE);
+
+				this.device.call("get_properties", [{ "did": this.did, "siid": 10, "piid": 10 }]).then(result => {
+					const favorite_level = parseInt(result[0]['value']);
+
+					const rotationSpeed = (favorite_level / 14) * 100;
+
+					logger.debug('getRotationSpeed: ' + rotationSpeed + ' favorite_level: ' + favorite_level);
+
+					this.service.getCharacteristic(Characteristic.RotationSpeed).updateValue(rotationSpeed);
+
+					callback(null);
+				}).catch(error => {
+					callback(error);
+				});
+
+
 			})
 			.catch(error => {
 				callback(error);
 			});
 	},
 
-	updateTargetAirPurifierState: function (mode) {
-		this.mode = mode;
-		const state = (mode != 'favorite') ? Characteristic.TargetAirPurifierState.AUTO : Characteristic.TargetAirPurifierState.MANUAL;
-
-		logger.debug('updateTargetAirPurifierState: Mode -> %s', mode);
-		logger.debug('updateTargetAirPurifierState: State -> %s', state);
-
-		this.service.getCharacteristic(Characteristic.TargetAirPurifierState).updateValue(state);
-	},
-
- 	getLockPhysicalControls: async function (callback) {
+	getRotationSpeed: function (callback) {
 		if (!this.device) {
 			callback(new Error('No Air Purifier is discovered.'));
 			return;
 		}
 
-		await this.device.call('get_prop', ['child_lock'])
-			.then(result => {
-				const state = (result[0] === 'on') ? Characteristic.LockPhysicalControls.CONTROL_LOCK_ENABLED : Characteristic.LockPhysicalControls.CONTROL_LOCK_DISABLED;
+		this.device.call("get_properties", [{ "did": this.did, "siid": 10, "piid": 10 }]).then(result => {
+			const favorite_level = parseInt(result[0]['value']);
 
-				logger.debug('getLockPhysicalControls: %s', state);
+			const rotationSpeed = (favorite_level / 14) * 100;
+
+			logger.debug('getRotationSpeed: ' + rotationSpeed + ' favorite_level: ' + favorite_level);
+
+			callback(null, rotationSpeed);
+		}).catch(error => {
+			callback(error);
+		});
+	},
+
+	setRotationSpeed: function (speed, callback) {
+		if (!this.device) {
+			callback(new Error('No Air Purifier is discovered.'));
+			return;
+		}
+
+		if (speed > 0) {
+
+			const favorite_level = (speed / 100) * 14;
+
+			logger.debug('setRotationSpeed: ' + speed + ' favorite_level: ' + favorite_level);
+
+			this.device.call("set_properties", [{ "did": this.did, "siid": 10, "piid": 10, "value": favorite_level }])
+				.then()
+				.catch(err => {
+					callback(err);
+				});
+		}
+
+		callback(null);
+	},
+
+	getLockPhysicalControls: async function (callback) {
+		if (!this.device) {
+			callback(new Error('No Air Purifier is discovered.'));
+			return;
+		}
+
+		await this.device.call("get_properties", [{ "did": this.did, "siid": 7, "piid": 1 }])
+			.then(result => {
+				const child_lock = result[0]['value'];
+				const state = child_lock ? Characteristic.LockPhysicalControls.CONTROL_LOCK_ENABLED : Characteristic.LockPhysicalControls.CONTROL_LOCK_DISABLED;
+
+				logger.debug('getLockPhysicalControls: %s', state ? 'CONTROL_LOCK_ENABLED' : 'CONTROL_LOCK_DISABLED');
 
 				callback(null, state);
 			})
 			.catch(error => {
+
 				callback(error);
 			});
 	},
@@ -423,57 +475,10 @@ MiAirPurifier.prototype = {
 			return;
 		}
 
-		logger.debug('setLockPhysicalControls: %s', state);
+		logger.debug('setLockPhysicalControls: %s', state ? 'CONTROL_LOCK_ENABLED' : 'CONTROL_LOCK_DISABLED');
 
-		await this.device.call('set_child_lock', [(state) ? 'on' : 'off'])
+		await this.device.changeChildLock(state)
 			.then(result => {
-				(result[0] === 'ok') ? callback() : callback(new Error(result[0]));
-			})
-			.catch(error => {
-				callback(error);
-			});
-	},
-
-
-	getRotationSpeed: function (callback) {
-		if (!this.device) {
-			callback(new Error('No Air Purifier is discovered.'));
-			return;
-		}
-
-		this.device.favoriteLevel()
-			.then(level => {
-				const speed = Math.ceil(level * 6.25);
-				logger.debug('getRotationSpeed: %s', speed);
-				callback(null, speed);
-			})
-			.catch(error => {
-				callback(error);
-			});
-	},
-
-	setRotationSpeed: function (speed, callback) {
-		if (!this.device) {
-			callback(new Error('No Air Purifier is discovered.'));
-			return;
-		}
-
-		// Overwirte to manual mode
-		if (this.mode != 'favorite') {
-			this.device.setMode('favorite')
-				.then()
-				.catch(err => {
-					callback(err);
-				});
-		}
-
-		// Set favorite level
-		const level = Math.ceil(speed / 6.25);
-
-		logger.debug('setRotationSpeed: %s', level);
-
-		this.device.setFavoriteLevel(level)
-			.then(mode => {
 				callback(null);
 			})
 			.catch(error => {
@@ -486,8 +491,12 @@ MiAirPurifier.prototype = {
 			callback(new Error('No Air Purifier is discovered.'));
 			return;
 		}
-
-		callback(null, this.device.property("filterLifeRemaining"));
+		this.device.call("get_properties", [{ "did": this.did, "siid": 4, "piid": 3 }]).then(result => {
+			const filter_level = result[0]["value"];
+			callback(null, filter_level);
+		}).catch(error => {
+			callback(error);
+		});
 	},
 
 	getFilterChangeState: function (callback) {
@@ -495,8 +504,12 @@ MiAirPurifier.prototype = {
 			callback(new Error('No Air Purifier is discovered.'));
 			return;
 		}
-
-		callback(null, (this.device.property("filterLifeRemaining") < 5) ? Characteristic.FilterChangeIndication.CHANGE_FILTER : Characteristic.FilterChangeIndication.FILTER_OK);
+		this.device.call("get_properties", [{ "did": this.did, "siid": 4, "piid": 3 }]).then(result => {
+			const filter_level = result[0]["value"];
+			callback(null, filter_level < 5 ? Characteristic.FilterChangeIndication.CHANGE_FILTER : Characteristic.FilterChangeIndication.FILTER_OK);
+		}).catch(error => {
+			callback(error);
+		});
 	},
 
 	getAirQuality: function (callback) {
@@ -608,11 +621,16 @@ MiAirPurifier.prototype = {
 			return;
 		}
 
-		const state = await this.device.led();
+		// bright = 0
+		// dim = 1
+		// off = 2
 
-		logger.debug('getLED: %s', state);
+		const result = await this.device.call("get_properties", [{ "did": this.did, "siid": 6, "piid": 1 }]).catch(error => { callback(error); });
 
-		callback(null, state);
+		const isOn = result[0]['value'] == 2 ? false : true;
+		logger.debug('getLED: %s', isOn ? "ON" : "OFF");
+
+		callback(null, isOn);
 	},
 
 	setLED: async function (state, callback) {
@@ -621,9 +639,15 @@ MiAirPurifier.prototype = {
 			return;
 		}
 
-		logger.debug('setLED: %s', state);
+		// bright = 0
+		// dim = 1
+		// off = 2
 
-		await this.device.led(state)
+		logger.debug('setLED: %s', state ? 'ON' : 'OFF');
+
+		const brightness = state ? 'bright' : 'off';
+
+		await this.device.changeLEDBrightness(brightness)
 			.then(state => {
 				callback(null);
 			})
@@ -638,11 +662,12 @@ MiAirPurifier.prototype = {
 			return;
 		}
 
-		const state = await this.device.call("get_prop", ["volume"]);
+		const result = await this.device.call("get_properties", [{ "did": this.did, "siid": 5, "piid": 1 }]).catch(error => { callback(error); });
+		const buzzer = result[0]['value']
 
-		logger.debug('getBuzzer: %s', state[0]);
+		logger.debug('getBuzzer: %s', buzzer ? 'ON' : 'OFF');
 
-		callback(null, state);
+		callback(null, buzzer);
 	},
 
 	setBuzzer: async function (state, callback) {
@@ -651,11 +676,10 @@ MiAirPurifier.prototype = {
 			return;
 		}
 
-		logger.debug('setBuzzer: %s', state);
-		
-		await this.device.call("set_volume", [state ? 100 : 0])
+		logger.debug('setBuzzer: %s', state ? 'ON' : 'OFF');
+
+		await this.device.changeBuzzer(state)
 			.then(state => {
-			
 				callback(null);
 			})
 			.catch(error => {
