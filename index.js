@@ -368,7 +368,7 @@ MiAirPurifierPro.prototype = {
 				// auto = 0
 				// favorite = 2
 				const mode = result[0];
-				
+
 				logger.debug('getTargetAirPurifierState: ' + (mode == 'auto' ? 'AUTO' : 'MANUAL'));
 
 				if (mode == 'auto') {
@@ -466,13 +466,17 @@ MiAirPurifierPro.prototype = {
 			logger.debug('setRotationSpeed: ' + speed + ' favorite_level: ' + favorite_level);
 
 			this.device.setFavoriteLevel(favorite_level)
-				.then()
+				.then(result => {
+					callback(null);
+				})
 				.catch(err => {
 					callback(err);
 				});
 		}
+		else {
+			callback(null);
+		}
 
-		callback(null);
 	},
 
 	getLockPhysicalControls: async function (callback) {
