@@ -1,6 +1,6 @@
 {
 	"name": "homebridge-xiaomi-purifier-pro",
-	"version": "1.5.1",
+	"version": "1.5.2",
 	"description": "Xiaomi Air Purifier Pro plugin for Homebridge.",
 	"license": "MIT",
 	"keywords": [
@@ -17,9 +17,9 @@
 	"engines": {
 		"node": ">=0.12.0",
 		"homebridge": ">=0.4.0",
-		"miio": ">=0.15.6"
+		"miio": ">=0.15.5"
 	},
 	"dependencies": {
-		"miio": "github:kingkong123/miio"
+		"miio": "github:github9984/miio"
 	  }
 }

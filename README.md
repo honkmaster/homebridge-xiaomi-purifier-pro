@@ -1,14 +1,11 @@
 [![npm version](https://badge.fury.io/js/homebridge-xiaomi-purifier-pro.svg)](https://badge.fury.io/js/homebridge-xiaomi-purifier-pro)
 
 # homebridge-xiaomi-purifier-pro
- 
- 
 
-![mi-air-purifier](https://cloud.githubusercontent.com/assets/73107/26249685/1d0ae78c-3cda-11e7-8b64-71e8d4323a3e.jpg)
-
-
+![mi-air-purifier](https://imgaz.staticbg.com/thumb/large/oaupload/ser1/banggood/images/55/22/4e668990-f7be-4361-8626-06d87f4e4cb7.jpg)
 
 ### Features
+
 * Switch on / off.
 
 * Switch auto / manual mode.
@@ -29,24 +26,23 @@
 
 * Display filter state.
 
-
-
 ### Installation
+
 1. Install required packages.
 
-	```
-	npm install -g homebridge-xiaomi-purifier-pro miio
+``` 
+	npm install -g homebridge-xiaomi-purifier-pro
 	```
 
-2. Make sure your Homebridge server is same network with your air purifier, then run following command to discover the token.
+2. Make sure your Homebridge server is same network with your device, then run following command to discover the token.
 
-	```
+``` 
 	miio discover --sync
 	```
 
 3. You may need to wait few minutes until you get the response similar to below:
 
-	```
+``` 
 	Device ID: 49466088
 	Model info: Unknown
 	Address: 192.168.1.8
@@ -60,44 +56,31 @@
 
 6. Then run the command again.
 
-	```
+``` 
 	miio discover --sync
 	```
 
-7. Add following accessory to the `config.json`.
+7. Add following accessory to the `config.json` .
 
-	```
+``` 
 		"accessories": [
 			{
 				"accessory": "MiAirPurifierPro",
 				"name": "Bed Room Air Purifier",
-				"ip": "ADDRESS_OF_THE_AIR_PURIFIER",
-				"token": "TOKEN_FROM_STEP_3",				
-				"showTemperature": true,
-				"showHumidity": true,
-				"showAirQuality": true,
-				"enableLED": true,
-				"enableBuzzer": true
-			},
-			{
-				"accessory": "MiAirPurifierPro",
-				"name": "Living Room Air Purifier",
-				"ip": "ADDRESS_OF_THE_AIR_PURIFIER",
-				"token": "TOKEN_FROM_STEP_3",				
-				"showTemperature": true,
-				"showHumidity": true,
-				"showAirQuality": true,
-				"enableLED": true,
-				"enableBuzzer": true
+				"ip": "192.168.1.x",
+				"token": "xxxxxxxxxxxxxxxxxxx",		
+				"enableLED": true (optional),
+				"enableBuzzer": true (optional),
+				"pm25_breakpoints": [5, 12, 35, 55] (optional),
+				"polling_interval": 60000 (optional)
 			}
 		]
 	```
 
-	**Notes:** Set value for `showTemperature`, `showHumidity`, `showAirQuality`, `enableLED`, `enableBuzzer` to **true** or **false** to show or hide these sensors in Home app.
+	**Notes:** Set value for `enableLED` , `enableBuzzer` to **true** or **false** to show or hide these sensors in Home app.
 
-8. Restart Homebridge, and your Mi air purifier will be added to Home app.
-
-
+8. Restart Homebridge, and your device will be added to Home app.
 
 # License
+
 MIT License
