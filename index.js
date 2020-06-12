@@ -154,7 +154,7 @@ AirPurifier.prototype.getServices = function () {
 
     // LED
     if (this.enableLED) {
-        this.lightService = new Service.Lightbulb('LED');
+        this.lightService = new Service.Lightbulb(this.enableLEDName);
         this.lightService
             .getCharacteristic(Characteristic.On)
             .on('get', this.getLED.bind(this))
@@ -164,7 +164,7 @@ AirPurifier.prototype.getServices = function () {
 
     // Buzzer
     if (this.enableBuzzer) {
-        this.buzzerService = new Service.Switch('Buzzer');
+        this.buzzerService = new Service.Switch(this.enableBuzzerName);
         this.buzzerService
             .getCharacteristic(Characteristic.On)
             .on('get', this.getBuzzer.bind(this))
