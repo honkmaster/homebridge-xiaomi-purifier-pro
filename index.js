@@ -22,11 +22,11 @@ function AirPurifier(log, config) {
     this.enableBuzzer = config['enableBuzzer'] || false;
     this.enableBuzzerName = config["enableBuzzerName"] || "Buzzer";
 
-    this.showTemperature = config['showTemperature'] || true;
+    this.showTemperature = config['showTemperature'] || false;
     this.showTemperatureName = config["showTemperatureName"] || "Temperature";
-    this.showHumidity = config['showHumidity'] || true;
+    this.showHumidity = config['showHumidity'] || false;
     this.showHumidityName = config["showHumidityName"] || "Humidity";
-    this.showAirQuality = config['showAirQuality'] || true;
+    this.showAirQuality = config['showAirQuality'] || false;
     this.showAirQualityName = config["showAirQualityName"] || "Air Quality";
 
     this.polling_interval = config['polling_interval'] || 60000;
