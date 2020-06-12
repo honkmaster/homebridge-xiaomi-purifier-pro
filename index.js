@@ -18,16 +18,16 @@ function AirPurifier(log, config) {
     this.services = [];    
 
     this.enableLED = config['enableLED'] || false;
-    this.enableLEDName = config["enableLEDName"].length > 0 || "LED";
+    this.enableLEDName = config["enableLEDName"] || "LED";
     this.enableBuzzer = config['enableBuzzer'] || false;
-    this.enableBuzzerName = config["enableBuzzerName"].length > 0 || "Buzzer";
+    this.enableBuzzerName = config["enableBuzzerName"] || "Buzzer";
 
     this.showTemperature = config['showTemperature'] || true;
-    this.showTemperatureName = config["showTemperatureName"].length > 0 || "Temperature";
+    this.showTemperatureName = config["showTemperatureName"] || "Temperature";
     this.showHumidity = config['showHumidity'] || true;
-    this.showHumidityName = config["showHumidityName"].length > 0 || "Humidity";
+    this.showHumidityName = config["showHumidityName"] || "Humidity";
     this.showAirQuality = config['showAirQuality'] || true;
-    this.showAirQualityName = config["showAirQualityName"].length > 0 || "Air Quality";
+    this.showAirQualityName = config["showAirQualityName"] || "Air Quality";
 
     this.polling_interval = config['polling_interval'] || 60000;
 
