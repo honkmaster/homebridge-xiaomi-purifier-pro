@@ -69,15 +69,23 @@
 				"name": "Bed Room Air Purifier",
 				"ip": "192.168.1.x",
 				"token": "xxxxxxxxxxxxxxxxxxx",		
-				"enableLED": true (optional),
+			    "enableLED": true (optional),
+				"enableLEDName": "Some custom LED name" (optional),
 				"enableBuzzer": true (optional),
+				"enableBuzzerName": "Some custom buzzer name" (optional),				
+				"showTemperature": true,
+                "showTemperatureName": "Some custom Temperature name" (optional),
+                "showHumidity": true (optional),
+                "showHumidityName": "Some custom Humidity name" (optional),
+                "showAirQuality": true (optional),
+                "showAirQualityName": "Some custom Air Quality name" (optional),
 				"pm25_breakpoints": [5, 12, 35, 55] (optional),
 				"polling_interval": 60000 (optional)
 			}
 		]
 	```
 
-	**Notes:** Set value for `enableLED` , `enableBuzzer` to **true** or **false** to show or hide these sensors in Home app.
+	**Notes:** Set value for `enableLED` , `enableBuzzer` , `showTemperature` , `showHumidity` , `showAirQuality`  to **true** or **false** to show or hide these sensors in Home app.
 
 8. Restart Homebridge, and your device will be added to Home app.
 

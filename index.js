@@ -15,9 +15,20 @@ module.exports = function (homebridge) {
 function AirPurifier(log, config) {
     var that = this;
     this.log = log;
-    this.services = [];
+    this.services = [];    
+
     this.enableLED = config['enableLED'] || false;
+    this.enableLEDName = config["enableLEDName"].length > 0 || "LED";
     this.enableBuzzer = config['enableBuzzer'] || false;
+    this.enableBuzzerName = config["enableBuzzerName"].length > 0 || "Buzzer";
+
+    this.showTemperature = config['showTemperature'] || true;
+    this.showTemperatureName = config["showTemperatureName"].length > 0 || "Temperature";
+    this.showHumidity = config['showHumidity'] || true;
+    this.showHumidityName = config["showHumidityName"].length > 0 || "Humidity";
+    this.showAirQuality = config['showAirQuality'] || true;
+    this.showAirQualityName = config["showAirQualityName"].length > 0 || "Air Quality";
+
     this.polling_interval = config['polling_interval'] || 60000;
 
 
@@ -54,18 +65,24 @@ function AirPurifier(log, config) {
         that.updateFilterLifeLevel();
     });
 
-    this.device.onChange('aqi', value => {
-        that.updateAirQuality();
-        that.updatePM2_5Density();
-    });
+    if (this.showAirQuality) {
+        this.device.onChange('aqi', value => {
+            that.updateAirQuality();
+            that.updatePM2_5Density();
+        });
+    }
 
-    this.device.onChange('temp', value => {
-        that.updateTemperature();
-    });
+    if (this.showTemperature) {
+        this.device.onChange('temp', value => {
+            that.updateTemperature();
+        });
+    }
 
-    this.device.onChange('humidity', value => {
-        that.updateHumidity();
-    });
+    if (this.showHumidity) {
+        this.device.onChange('humidity', value => {
+            that.updateHumidity();
+        });
+    }
 
     if (this.enableLED) {
         this.device.onChange('led', value => {
@@ -155,46 +172,53 @@ AirPurifier.prototype.getServices = function () {
         this.services.push(this.buzzerService);
     }
 
-    // Air Quality Sensor
-    this.airQualitySensorService = new Service.AirQualitySensor('Air Quality');
+     // Air Quality Sensor
+     if (this.showAirQuality) {
+        this.airQualitySensorService = new Service.AirQualitySensor(this.showAirQualityName);
 
-    this.airQualitySensorService
-        .getCharacteristic(Characteristic.StatusActive)
-        .on('get', this.getStatusActive.bind(this));
-    this.airQualitySensorService
-        .getCharacteristic(Characteristic.AirQuality)
-        .on('get', this.getAirQuality.bind(this));
-    this.airQualitySensorService
-        .getCharacteristic(Characteristic.PM2_5Density)
-        .on('get', this.getPM2_5Density.bind(this));
+        this.airQualitySensorService
+            .getCharacteristic(Characteristic.StatusActive)
+            .on('get', this.getStatusActive.bind(this));
+        this.airQualitySensorService
+            .getCharacteristic(Characteristic.AirQuality)
+            .on('get', this.getAirQuality.bind(this));
+        this.airQualitySensorService
+            .getCharacteristic(Characteristic.PM2_5Density)
+            .on('get', this.getPM2_5Density.bind(this));
+        this.services.push(this.airQualitySensorService);
+    }
 
     // Temperature Sensor
-    this.temperatureSensorService = new Service.TemperatureSensor('Temperature');
+    if (this.showTemperature) {
+        this.temperatureSensorService = new Service.TemperatureSensor(this.showTemperatureName);
 
-    this.temperatureSensorService
-        .getCharacteristic(Characteristic.StatusActive)
-        .on('get', this.getStatusActive.bind(this));
-    this.temperatureSensorService
-        .getCharacteristic(Characteristic.CurrentTemperature)
-        .on('get', this.getTemperature.bind(this));
+        this.temperatureSensorService
+            .getCharacteristic(Characteristic.StatusActive)
+            .on('get', this.getStatusActive.bind(this));
+        this.temperatureSensorService
+            .getCharacteristic(Characteristic.CurrentTemperature)
+            .on('get', this.getTemperature.bind(this));
+        this.services.push(this.temperatureSensorService);
+    }
 
     // Humidity Sensor
-    this.humiditySensorService = new Service.HumiditySensor('Humidity');
+    if (this.showHumidity) {
+        this.humiditySensorService = new Service.HumiditySensor(this.showHumidityName);
 
-    this.humiditySensorService
-        .getCharacteristic(Characteristic.StatusActive)
-        .on('get', this.getStatusActive.bind(this));
-    this.humiditySensorService
-        .getCharacteristic(Characteristic.CurrentRelativeHumidity)
-        .on('get', this.getHumidity.bind(this));
+        this.humiditySensorService
+            .getCharacteristic(Characteristic.StatusActive)
+            .on('get', this.getStatusActive.bind(this));
+        this.humiditySensorService
+            .getCharacteristic(Characteristic.CurrentRelativeHumidity)
+            .on('get', this.getHumidity.bind(this));
+        this.services.push(this.humiditySensorService);
+    }
 
     // Publish Services
     this.services.push(this.informationService);
     this.services.push(this.service);
-    this.services.push(this.airQualitySensorService);
-    this.services.push(this.temperatureSensorService);
-    this.services.push(this.humiditySensorService);
 
+    
     return this.services;
 }
 
