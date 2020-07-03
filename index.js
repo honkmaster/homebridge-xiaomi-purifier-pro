@@ -1,13 +1,15 @@
 'use strict';
-// https://github.com/aschzero/homebridge-airmega/blob/master/lib/services/PurifierService.ts
-// https://github.com/Colorado4Wheeler/HomeKit-Bridge/wiki/HomeKit-Model-Reference
 
-var Service, Characteristic;
+var Service, Characteristic, FakeGatoHistoryService;
 var MiioDevice = require('./MiioAirPurifier');
+
+var os = require("os");
+var hostname = os.hostname();
 
 module.exports = function (homebridge) {
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
+    FakeGatoHistoryService = require("fakegato-history")(homebridge);
 
     homebridge.registerAccessory("homebridge-xiaomi-purifier-pro", "MiAirPurifierPro", AirPurifier);
 }
@@ -30,7 +32,6 @@ function AirPurifier(log, config) {
     this.showAirQualityName = config["showAirQualityName"] || "Air Quality";
 
     this.polling_interval = config['polling_interval'] || 60000;
-
 
     if (Array.isArray(config['pm25_breakpoints']) && config['pm25_breakpoints'].length >= 4) {
         this.pm25_breakpoints = config['pm25_breakpoints'];
@@ -75,12 +76,14 @@ function AirPurifier(log, config) {
     if (this.showTemperature) {
         this.device.onChange('temp', value => {
             that.updateTemperature();
+            that.updateHistory();
         });
     }
 
     if (this.showHumidity) {
         this.device.onChange('humidity', value => {
             that.updateHumidity();
+            that.updateHistory();
         });
     }
 
@@ -113,9 +116,9 @@ AirPurifier.prototype.getServices = function () {
     this.informationService
         .setCharacteristic(Characteristic.Name, this.name)
         .setCharacteristic(Characteristic.Manufacturer, 'Xiaomi')
-        .setCharacteristic(Characteristic.Model, 'zhimi.airpurifier.v7')
-        .setCharacteristic(Characteristic.SerialNumber, this.token)
-        .setCharacteristic(Characteristic.FirmwareRevision, '1.0.0')
+        .setCharacteristic(Characteristic.Model, 'Air Purifier')
+        .setCharacteristic(Characteristic.SerialNumber, hostname + "-" + this.token)
+        .setCharacteristic(Characteristic.FirmwareRevision, '1.5.9')
 
     // Service
     this.service = new Service.AirPurifier(this.name);
@@ -214,11 +217,14 @@ AirPurifier.prototype.getServices = function () {
         this.services.push(this.humiditySensorService);
     }
 
+    // History
+    this.fakeGatoHistoryService = new FakeGatoHistoryService("room", this, { storage: 'fs' });
+    this.services.push(this.fakeGatoHistoryService);
+
     // Publish Services
     this.services.push(this.informationService);
     this.services.push(this.service);
 
-    
     return this.services;
 }
 
@@ -234,7 +240,7 @@ AirPurifier.prototype.getActive = function (callback) {
             return callback(null, Characteristic.Active.INACTIVE);
         }
     } catch (e) {
-        this.log('getActive Failed: ' + e);
+        this.log('getActive failed: ' + e);
         callback(e);
     }
 }
@@ -254,13 +260,12 @@ AirPurifier.prototype.setActive = function (targetState, callback, context) {
 
         callback();
     } catch (e) {
-        this.log('setActive Failed: ' + e);
+        this.log('setActive failed: ' + e);
         callback(e);
     }
 }
 
 AirPurifier.prototype.updateActive = function () {
-
     try {
         var value = this.device.get('power');
         var targetValue = value ? Characteristic.Active.ACTIVE : Characteristic.Active.INACTIVE;
@@ -271,7 +276,7 @@ AirPurifier.prototype.updateActive = function () {
 
         this.log('updateActive to ' + value);
     } catch (e) {
-        this.log('updateActive Failed: ' + e);
+        this.log('updateActive failed: ' + e);
     }
 }
 
@@ -293,13 +298,12 @@ AirPurifier.prototype.getCurrentAirPurifierState = function (callback) {
         }
 
     } catch (e) {
-        this.log('getCurrentAirPurifierState Failed: ' + e);
+        this.log('getCurrentAirPurifierState failed: ' + e);
         callback(e);
     }
 }
 
 AirPurifier.prototype.updateCurrentAirPurifierState = function (callback) {
-
     try {
         var value = this.device.get('power');
         var targetValue = Characteristic.CurrentAirPurifierState.INACTIVE;
@@ -315,9 +319,8 @@ AirPurifier.prototype.updateCurrentAirPurifierState = function (callback) {
         this.service.setCharacteristic(Characteristic.CurrentAirPurifierState, targetValue);
 
         this.log('updateCurrentAirPurifierState to ' + value);
-
     } catch (e) {
-        this.log('updateCurrentAirPurifierState Failed: ' + e);
+        this.log('updateCurrentAirPurifierState failed: ' + e);
     }
 }
 
@@ -325,7 +328,6 @@ AirPurifier.prototype.getTargetAirPurifierState = function (callback) {
     this.log('getTargetAirPurifierState');
 
     try {
-
         var value = this.device.get('mode');
 
         if (value == 'auto') {
@@ -334,7 +336,7 @@ AirPurifier.prototype.getTargetAirPurifierState = function (callback) {
             callback(null, Characteristic.TargetAirPurifierState.MANUAL);
         }
     } catch (e) {
-        this.log('getTargetAirPurifierState Failed: ' + e);
+        this.log('getTargetAirPurifierState failed: ' + e);
         callback(e);
     }
 }
@@ -345,7 +347,6 @@ AirPurifier.prototype.setTargetAirPurifierState = function (targetState, callbac
     if (context === 'fromOutsideHomekit') { return callback(); }
 
     try {
-
         if (targetState == Characteristic.TargetAirPurifierState.AUTO) {
 
             this.device.set('mode', 'auto');
@@ -358,17 +359,15 @@ AirPurifier.prototype.setTargetAirPurifierState = function (targetState, callbac
 
         callback();
     } catch (e) {
-        this.log('setTargetAirPurifierState Failed: ' + e);
+        this.log('setTargetAirPurifierState failed: ' + e);
         callback(e);
     }
 }
 
 AirPurifier.prototype.updateTargetAirPurifierState = function () {
-
     try {
         var value = this.device.get('mode');
         var targetValue;
-
 
         if (value == 'auto') {
             var targetValue = Characteristic.TargetAirPurifierState.AUTO;
@@ -382,7 +381,7 @@ AirPurifier.prototype.updateTargetAirPurifierState = function () {
 
         this.log('updateTargetAirPurifierState to ' + value);
     } catch (e) {
-        this.log('updateTargetAirPurifierState Failed: ' + e);
+        this.log('updateTargetAirPurifierState failed: ' + e);
     }
 }
 
@@ -394,7 +393,7 @@ AirPurifier.prototype.getRotationSpeed = function (callback) {
 
         callback(null, value);
     } catch (e) {
-        this.log('getRotationSpeed Failed: ' + e);
+        this.log('getRotationSpeed failed: ' + e);
         callback(e);
     }
 }
@@ -409,21 +408,18 @@ AirPurifier.prototype.setRotationSpeed = function (targetSpeed, callback, contex
             this.device.setSpeed(targetSpeed);
         }
 
-
         if (this.device.get('mode') == 'auto') {
             this.device.set('mode', 'favorite');
         }
 
         callback(null);
-
     } catch (e) {
-        this.log('setRotationSpeed Failed : ' + e);
+        this.log('setRotationSpeed failed : ' + e);
         callback(e);
     }
 }
 
 AirPurifier.prototype.updateRotationSpeed = function () {
-
     try {
         var value = this.device.getSpeed();
 
@@ -433,7 +429,7 @@ AirPurifier.prototype.updateRotationSpeed = function () {
 
         this.log('updateRotationSpeed to ' + value);
     } catch (e) {
-        this.log('updateRotationSpeed Failed : ' + e);
+        this.log('updateRotationSpeed failed : ' + e);
     }
 }
 
@@ -449,7 +445,7 @@ AirPurifier.prototype.getLockPhysicalControls = function (callback) {
             return callback(null, Characteristic.LockPhysicalControls.CONTROL_LOCK_DISABLED);
         }
     } catch (e) {
-        this.log('getLockPhysicalControls Failed: ' + e);
+        this.log('getLockPhysicalControls failed: ' + e);
         callback(e);
     }
 }
@@ -468,15 +464,13 @@ AirPurifier.prototype.setLockPhysicalControls = function (targetState, callback,
 
         callback();
     } catch (e) {
-        this.log('setLockPhysicalControls Failed: ' + e);
+        this.log('setLockPhysicalControls failed: ' + e);
         callback(e);
     }
 }
 
 AirPurifier.prototype.updateLockPhysicalControls = function () {
-
     try {
-
         var value = this.device.get('child_lock');
 
         var targetValue;
@@ -493,7 +487,7 @@ AirPurifier.prototype.updateLockPhysicalControls = function () {
 
         this.log('updateLockPhysicalControls to ' + value);
     } catch (e) {
-        this.log('updateLockPhysicalControls Failed: ' + e);
+        this.log('updateLockPhysicalControls failed: ' + e);
     }
 }
 
@@ -510,7 +504,7 @@ AirPurifier.prototype.getLED = function (callback) {
             return callback(null, false);
         }
     } catch (e) {
-        this.log('getLED Failed: ' + e);
+        this.log('getLED failed: ' + e);
         callback(e);
     }
 }
@@ -521,7 +515,6 @@ AirPurifier.prototype.setLED = function (targetState, callback, context) {
     if (context === 'fromOutsideHomekit') { return callback(); }
 
     try {
-
         if (targetState == true) {
             this.device.set('led', 'on');
         } else {
@@ -530,15 +523,13 @@ AirPurifier.prototype.setLED = function (targetState, callback, context) {
 
         callback();
     } catch (e) {
-        this.log('setLED Failed: ' + e);
+        this.log('setLED failed: ' + e);
         callback(e);
     }
 }
 
 AirPurifier.prototype.updateLED = function () {
-
     try {
-
         var value = this.device.get('led');
 
         var targetValue;
@@ -555,7 +546,7 @@ AirPurifier.prototype.updateLED = function () {
 
         this.log('updateLED to ' + value);
     } catch (e) {
-        this.log('updateLED Failed: ' + e);
+        this.log('updateLED failed: ' + e);
     }
 }
 
@@ -563,7 +554,6 @@ AirPurifier.prototype.getBuzzer = function (callback) {
     this.log('getBuzzer');
 
     try {
-
         var value = this.device.get('buzzer');
 
         if (value == 100) {
@@ -572,10 +562,8 @@ AirPurifier.prototype.getBuzzer = function (callback) {
         else {
             return callback(null, false);
         }
-
-
     } catch (e) {
-        this.log('getBuzzer Failed: ' + e);
+        this.log('getBuzzer failed: ' + e);
         callback(e);
     }
 }
@@ -595,7 +583,7 @@ AirPurifier.prototype.setBuzzer = function (targetState, callback, context) {
 
         callback();
     } catch (e) {
-        this.log('setBuzzer Failed: ' + e);
+        this.log('setBuzzer failed: ' + e);
         callback(e);
     }
 }
@@ -619,7 +607,7 @@ AirPurifier.prototype.updateBuzzer = function () {
 
         this.log('updateBuzzer to ' + value);
     } catch (e) {
-        this.log('updateBuzzer Failed: ' + e);
+        this.log('updateBuzzer failed: ' + e);
     }
 }
 
@@ -636,13 +624,12 @@ AirPurifier.prototype.getFilterChangeIndication = function (callback) {
         }
 
     } catch (e) {
-        this.log('getFilterChangeIndication Failed: ' + e);
+        this.log('getFilterChangeIndication failed: ' + e);
         callback(e);
     }
 }
 
 AirPurifier.prototype.updateFilterChangeIndication = function () {
-
     try {
         var value = this.device.get('filter_level');
 
@@ -655,7 +642,7 @@ AirPurifier.prototype.updateFilterChangeIndication = function () {
         this.log('updateFilterChangeIndication to ' + value);
 
     } catch (e) {
-        this.log('updateFilterChangeIndication Failed: ' + e);
+        this.log('updateFilterChangeIndication failed: ' + e);
     }
 }
 
@@ -667,7 +654,7 @@ AirPurifier.prototype.getFilterLifeLevel = function (callback) {
 
         return callback(null, value);
     } catch (e) {
-        this.log('getFilterLifeLevel Failed: ' + e);
+        this.log('getFilterLifeLevel failed: ' + e);
         callback(e);
     }
 }
@@ -682,7 +669,7 @@ AirPurifier.prototype.updateFilterLifeLevel = function () {
         this.log("updateFilterLifeLevel to " + value);
 
     } catch (e) {
-        this.log('updateFilterLifeLevel Failed: ' + e);
+        this.log('updateFilterLifeLevel failed: ' + e);
     }
 }
 
@@ -695,13 +682,12 @@ AirPurifier.prototype.getStatusActive = function (callback) {
         return callback(null, value);
 
     } catch (e) {
-        this.log('getStatusActive Failed: ' + e);
+        this.log('getStatusActive failed: ' + e);
         callback(e);
     }
 }
 
 AirPurifier.prototype.updateStatusActive = function () {
-
     try {
         var value = this.device.get('power');
 
@@ -718,7 +704,7 @@ AirPurifier.prototype.updateStatusActive = function () {
         this.log('updateStatusActive to ' + value);
 
     } catch (e) {
-        this.log('updateStatusActive Failed: ' + e);
+        this.log('updateStatusActive failed: ' + e);
     }
 }
 
@@ -737,13 +723,12 @@ AirPurifier.prototype.getAirQuality = function (callback) {
 
         return callback(null, quality);
     } catch (e) {
-        this.log('getAirQuality Failed: ' + e);
+        this.log('getAirQuality failed: ' + e);
         callback(e);
     }
 }
 
 AirPurifier.prototype.updateAirQuality = function () {
-
     try {
         var value = this.device.get('aqi');
         var quality = Characteristic.AirQuality.UNKNOWN;
@@ -759,7 +744,7 @@ AirPurifier.prototype.updateAirQuality = function () {
         this.log("updateAirQuality to " + value);
 
     } catch (e) {
-        this.log('updateAirQuality Failed: ' + e);
+        this.log('updateAirQuality failed: ' + e);
     }
 }
 
@@ -771,13 +756,12 @@ AirPurifier.prototype.getPM2_5Density = function (callback) {
 
         return callback(null, value);
     } catch (e) {
-        this.log('getAirQuality Failed: ' + e);
+        this.log('getAirQuality failed: ' + e);
         callback(e);
     }
 }
 
 AirPurifier.prototype.updatePM2_5Density = function () {
-
     try {
         var value = this.device.get('aqi');
         this.airQualitySensorService.setCharacteristic(Characteristic.PM2_5Density, value);
@@ -785,7 +769,7 @@ AirPurifier.prototype.updatePM2_5Density = function () {
         this.log('updatePM2_5Density to ' + value);
 
     } catch (e) {
-        this.log('updatePM2_5Density Failed: ' + e);
+        this.log('updatePM2_5Density failed: ' + e);
     }
 }
 
@@ -797,13 +781,12 @@ AirPurifier.prototype.getTemperature = function (callback) {
 
         return callback(null, value);
     } catch (e) {
-        this.log('getTemperature Failed: ' + e);
+        this.log('getTemperature failed: ' + e);
         callback(e);
     }
 }
 
 AirPurifier.prototype.updateTemperature = function () {
-
     try {
         var value = this.device.get('temp');
         this.temperatureSensorService.setCharacteristic(Characteristic.CurrentTemperature, value);
@@ -811,7 +794,7 @@ AirPurifier.prototype.updateTemperature = function () {
         this.log('updateTemperature to ' + value);
 
     } catch (e) {
-        this.log('updateTemperature Failed: ' + e);
+        this.log('updateTemperature failed: ' + e);
     }
 }
 
@@ -823,20 +806,34 @@ AirPurifier.prototype.getHumidity = function (callback) {
 
         return callback(null, value);
     } catch (e) {
-        this.log('getHumidity Failed: ' + e);
+        this.log('getHumidity failed: ' + e);
         callback(e);
     }
 }
 
 AirPurifier.prototype.updateHumidity = function () {
-
     try {
         var value = this.device.get('humidity');
         this.humiditySensorService.setCharacteristic(Characteristic.CurrentRelativeHumidity, value);
 
-        this.log('updateHumidity to ' + value);
-
+        this.log('updateHumidity');
     } catch (e) {
-        this.log('updateHumidity Failed: ' + e);
+        this.log('updateHumidity failed: ' + e);
     }
 }
+
+AirPurifier.prototype.updateHistory = function () {
+    try {
+        this.fakeGatoHistoryService.addEntry({
+            time: new Date().getTime() / 1000,
+            temp: this.device.get('temp'),
+            humidity: this.device.get('humidity')
+        });
+
+        this.log('updateHistory to ' + value);
+
+    } catch (e) {
+        this.log('updateHistory failed: ' + e);
+    }
+}
+

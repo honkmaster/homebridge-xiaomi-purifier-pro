@@ -1,8 +1,10 @@
 {
 	"name": "homebridge-xiaomi-purifier-pro",
-	"version": "1.5.8",
+	"version": "1.5.9",
 	"description": "Xiaomi Air Purifier Pro plugin for Homebridge.",
+	"author": "devguy, clauzewitz (Kim Sung-Jun), honkmaster (Tobias Tiemerding)",
 	"license": "MIT",
+	"homepage": "https://github.com/honkmaster/homebridge-xiaomi-purifier-pro#readme",
 	"keywords": [
 		"homebridge-plugin",
 		"xiaomi",
@@ -12,7 +14,7 @@
 	],
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/github9984/homebridge-xiaomi-purifier-pro.git"
+		"url": "https://github.com/honkmaster/homebridge-xiaomi-purifier-pro.git"
 	},
 	"engines": {
 		"node": ">=0.12.0",
@@ -20,6 +22,7 @@
 		"miio": ">=0.15.5"
 	},
 	"dependencies": {
-		"miio": "github:github9984/miio"
+		"miio": "github:honkmaster/miio",
+		"fakegato-history": "^0.5.2"
 	  }
 }

@@ -7,23 +7,14 @@
 ### Features
 
 * Switch on / off.
-
 * Switch auto / manual mode.
-
 * Change fan rotation speed.
-
 * Switch child lock on / off.
-
 * Switch LED light on / off.
-
 * Switch buzzer sound on / off.
-
 * Display temperature.
-
 * Display humidity.
-
 * Display air quality.
-
 * Display filter state.
 
 ### Installation
