@@ -1,6 +1,6 @@
 {
 	"name": "homebridge-xiaomi-purifier-pro",
-	"version": "1.5.10",
+	"version": "1.5.11",
 	"description": "Xiaomi Air Purifier Pro plugin for Homebridge.",
 	"author": "devguy, clauzewitz (Kim Sung-Jun), honkmaster (Tobias Tiemerding)",
 	"license": "MIT",

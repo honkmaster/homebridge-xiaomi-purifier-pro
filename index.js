@@ -88,6 +88,7 @@ function AirPurifier(log, config) {
         this.device.onChange('aqi', value => {
             that.updateAirQuality();
             that.updatePM2_5Density();
+            that.updateHistory();
         });
     }
 
