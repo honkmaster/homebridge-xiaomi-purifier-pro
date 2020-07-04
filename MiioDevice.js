@@ -142,7 +142,6 @@ class MiioDevice {
                 parsedResponse['volume'] = result[0];
                 response = parsedResponse;
 
-
                 this.isResponding = true;
                 var changedIndexes = [];
 
@@ -163,9 +162,7 @@ class MiioDevice {
                 };
 
                 changedIndexes.forEach(i => {
-
                     var property = that.properties[i];
-                    
                     that.triggerOnChangeCallbacks(property.prop, property.value);
                 });
             });

@@ -4,7 +4,8 @@ var Service, Characteristic, FakeGatoHistoryService;
 var MiioDevice = require('./MiioAirPurifier');
 
 var os = require("os");
-var hostname = os.hostname();
+var hostname = os.hostname().split(".")[0];
+var version = process.env.npm_package_version;
 
 module.exports = function (homebridge) {
     Service = homebridge.hap.Service;
@@ -17,19 +18,28 @@ module.exports = function (homebridge) {
 function AirPurifier(log, config) {
     var that = this;
     this.log = log;
+    this.name = config['name'];
+    this.model = config['model'] || "Air Purifier";
+    this.ip = config['ip'];
+    this.token = config['token'];
     this.services = [];    
 
     this.enableLED = config['enableLED'] || false;
     this.enableLEDName = config["enableLEDName"] || "LED";
+
     this.enableBuzzer = config['enableBuzzer'] || false;
     this.enableBuzzerName = config["enableBuzzerName"] || "Buzzer";
 
     this.showTemperature = config['showTemperature'] || false;
     this.showTemperatureName = config["showTemperatureName"] || "Temperature";
+
     this.showHumidity = config['showHumidity'] || false;
     this.showHumidityName = config["showHumidityName"] || "Humidity";
+
     this.showAirQuality = config['showAirQuality'] || false;
     this.showAirQualityName = config["showAirQualityName"] || "Air Quality";
+
+    this.filterChangeAlertLevel = config['filterChangeAlertLevel'] || 15;
 
     this.polling_interval = config['polling_interval'] || 60000;
 
@@ -38,6 +48,14 @@ function AirPurifier(log, config) {
     }
     else {
         this.pm25_breakpoints = [5, 12, 35, 55];
+    }
+
+    if (!this.ip) {
+        throw new Error('Your must provide IP address of the Air Purifier.');
+    }
+
+    if (!this.token) {
+        throw new Error('Your must provide token of the Air Purifier.');
     }
 
     this.device = new MiioDevice(config['token'], config['ip']);
@@ -116,9 +134,9 @@ AirPurifier.prototype.getServices = function () {
     this.informationService
         .setCharacteristic(Characteristic.Name, this.name)
         .setCharacteristic(Characteristic.Manufacturer, 'Xiaomi')
-        .setCharacteristic(Characteristic.Model, 'Air Purifier')
+        .setCharacteristic(Characteristic.Model, this.model)
         .setCharacteristic(Characteristic.SerialNumber, hostname + "-" + this.token)
-        .setCharacteristic(Characteristic.FirmwareRevision, '1.5.9')
+        .setCharacteristic(Characteristic.FirmwareRevision, version)
 
     // Service
     this.service = new Service.AirPurifier(this.name);
@@ -575,10 +593,10 @@ AirPurifier.prototype.setBuzzer = function (targetState, callback, context) {
 
     try {
         if (targetState == true) {
-            this.device.set('buzzer', 100);
+            this.device.set('buzzer', 'on');
         }
         else {
-            this.device.set('buzzer', 0);
+            this.device.set('buzzer', 'off');
         }
 
         callback();
@@ -594,7 +612,7 @@ AirPurifier.prototype.updateBuzzer = function () {
         var value = this.device.get('buzzer');
         var targetValue;
 
-        if (value == 100) {
+        if (value == 'on') {
             targetValue = true;
         }
         else {
@@ -617,7 +635,7 @@ AirPurifier.prototype.getFilterChangeIndication = function (callback) {
     try {
         var value = this.device.get('filter_level');
 
-        if (value <= 15) {
+        if (value <= this.filterChangeAlertLevel) {
             return callback(null, Characteristic.FilterChangeIndication.CHANGE_FILTER);
         } else {
             return callback(null, Characteristic.FilterChangeIndication.FILTER_OK);
@@ -633,14 +651,13 @@ AirPurifier.prototype.updateFilterChangeIndication = function () {
     try {
         var value = this.device.get('filter_level');
 
-        if (value <= 15) {
+        if (value <= this.filterChangeAlertLevel) {
             this.service.setCharacteristic(Characteristic.FilterChangeIndication, Characteristic.FilterChangeIndication.CHANGE_FILTER);
         } else {
             this.service.setCharacteristic(Characteristic.FilterChangeIndication, Characteristic.FilterChangeIndication.FILTER_OK);
         }
 
         this.log('updateFilterChangeIndication to ' + value);
-
     } catch (e) {
         this.log('updateFilterChangeIndication failed: ' + e);
     }
@@ -667,7 +684,6 @@ AirPurifier.prototype.updateFilterLifeLevel = function () {
         this.service.setCharacteristic(Characteristic.FilterLifeLevel, value);
 
         this.log("updateFilterLifeLevel to " + value);
-
     } catch (e) {
         this.log('updateFilterLifeLevel failed: ' + e);
     }
@@ -680,7 +696,6 @@ AirPurifier.prototype.getStatusActive = function (callback) {
         var value = this.device.get('power');
 
         return callback(null, value);
-
     } catch (e) {
         this.log('getStatusActive failed: ' + e);
         callback(e);
@@ -702,7 +717,6 @@ AirPurifier.prototype.updateStatusActive = function () {
         }
 
         this.log('updateStatusActive to ' + value);
-
     } catch (e) {
         this.log('updateStatusActive failed: ' + e);
     }
@@ -742,7 +756,6 @@ AirPurifier.prototype.updateAirQuality = function () {
         this.airQualitySensorService.setCharacteristic(Characteristic.AirQuality, quality);
 
         this.log("updateAirQuality to " + value);
-
     } catch (e) {
         this.log('updateAirQuality failed: ' + e);
     }
@@ -767,7 +780,6 @@ AirPurifier.prototype.updatePM2_5Density = function () {
         this.airQualitySensorService.setCharacteristic(Characteristic.PM2_5Density, value);
 
         this.log('updatePM2_5Density to ' + value);
-
     } catch (e) {
         this.log('updatePM2_5Density failed: ' + e);
     }
@@ -792,7 +804,6 @@ AirPurifier.prototype.updateTemperature = function () {
         this.temperatureSensorService.setCharacteristic(Characteristic.CurrentTemperature, value);
 
         this.log('updateTemperature to ' + value);
-
     } catch (e) {
         this.log('updateTemperature failed: ' + e);
     }
@@ -827,11 +838,11 @@ AirPurifier.prototype.updateHistory = function () {
         this.fakeGatoHistoryService.addEntry({
             time: new Date().getTime() / 1000,
             temp: this.device.get('temp'),
-            humidity: this.device.get('humidity')
+            humidity: this.device.get('humidity'),
+            ppm: this.device.get('aqi')
         });
 
         this.log('updateHistory to ' + value);
-
     } catch (e) {
         this.log('updateHistory failed: ' + e);
     }
