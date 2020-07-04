@@ -18,11 +18,13 @@ module.exports = function (homebridge) {
 function AirPurifier(log, config) {
     var that = this;
     this.log = log;
+
     this.name = config['name'];
     this.model = config['model'] || "Air Purifier";
     this.ip = config['ip'];
     this.token = config['token'];
-    this.services = [];    
+
+    this.services = [];
 
     this.enableLED = config['enableLED'] || false;
     this.enableLEDName = config["enableLEDName"] || "LED";
@@ -139,7 +141,7 @@ AirPurifier.prototype.getServices = function () {
         .setCharacteristic(Characteristic.SerialNumber, hostname + "-" + this.token)
         .setCharacteristic(Characteristic.FirmwareRevision, version)
 
-    // Service
+    // Air Purifier Service
     this.service = new Service.AirPurifier(this.name);
 
     this.service
@@ -174,6 +176,7 @@ AirPurifier.prototype.getServices = function () {
         getCharacteristic(Characteristic.FilterLifeLevel)
         .on('get', this.getFilterLifeLevel.bind(this));
 
+    // Additional Services
     // LED
     if (this.enableLED) {
         this.lightService = new Service.Lightbulb(this.enableLEDName);
@@ -194,8 +197,8 @@ AirPurifier.prototype.getServices = function () {
         this.services.push(this.buzzerService);
     }
 
-     // Air Quality Sensor
-     if (this.showAirQuality) {
+    // Air Quality Sensor
+    if (this.showAirQuality) {
         this.airQualitySensorService = new Service.AirQualitySensor(this.showAirQualityName);
 
         this.airQualitySensorService
@@ -707,15 +710,17 @@ AirPurifier.prototype.updateStatusActive = function () {
     try {
         var value = this.device.get('power');
 
+        var targetValue;
         if (value == true) {
-            this.airQualitySensorService.setCharacteristic(Characteristic.StatusActive, true);
-            this.temperatureSensorService.setCharacteristic(Characteristic.StatusActive, true);
-            this.humiditySensorService.setCharacteristic(Characteristic.StatusActive, true);
-        } else {
-            this.airQualitySensorService.setCharacteristic(Characteristic.StatusActive, false);
-            this.temperatureSensorService.setCharacteristic(Characteristic.StatusActive, false);
-            this.humiditySensorService.setCharacteristic(Characteristic.StatusActive, false);
+            targetValue = true;
         }
+        else {
+            targetValue = false;
+        }
+
+        this.airQualitySensorService.setCharacteristic(Characteristic.StatusActive, targetValue);
+        this.temperatureSensorService.setCharacteristic(Characteristic.StatusActive, targetValue);
+        this.humiditySensorService.setCharacteristic(Characteristic.StatusActive, targetValue);
 
         this.log('updateStatusActive to ' + value);
     } catch (e) {
@@ -843,7 +848,7 @@ AirPurifier.prototype.updateHistory = function () {
             ppm: this.device.get('aqi')
         });
 
-        this.log('updateHistory to ' + value);
+        this.log('updateHistory');
     } catch (e) {
         this.log('updateHistory failed: ' + e);
     }

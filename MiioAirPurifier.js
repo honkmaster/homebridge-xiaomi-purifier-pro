@@ -5,15 +5,15 @@ class MiioAirPurifier extends MiioDevice {
         super(token, ip);
 
         this.dictionary = {
-            'power'         : ['power'], // bool            
-            'mode'          : ['mode'], // Mode : 0(Auto), 1(Sleep), 2(Favorite), 3(None)
-            'aqi'           : ['aqi'], // PM2.5 Density : 0-600 1
-            'humidity'      : ['humidity'], // Relative Humidity: 0-100(Percentage)
-            'temp'          : ['temperature'], // Temperature: -40-125 0.1
-            'filter_level'  : ['filterLifeRemaining'], // Filter Live Level : 0-100(Percentage)
-            'child_lock'    : ['childLock'], // Physical Control Locked : bool
-            'led'           : ['led'], // bool      
-            'buzzer'        : ['volume'], // bool
+            'power': ['power'], // bool            
+            'mode': ['mode'], // Mode : 0(Auto), 1(Sleep), 2(Favorite), 3(None)
+            'aqi': ['aqi'], // PM2.5 Density : 0-600 1
+            'humidity': ['humidity'], // Relative Humidity: 0-100(Percentage)
+            'temp': ['temperature'], // Temperature: -40-125 0.1
+            'filter_level': ['filterLifeRemaining'], // Filter Live Level : 0-100(Percentage)
+            'child_lock': ['childLock'], // Physical Control Locked : bool
+            'led': ['led'], // bool      
+            'buzzer': ['volume'], // bool
             'favorite_level': ['favoriteLevel'] // 1 - 16
         }
 
